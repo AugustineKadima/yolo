@@ -1,33 +1,70 @@
-version: "3.1"
-services:
-  backend-server:
-    build: .
-    container_name: backend_container
-    command: node /myapp/backend/server.js 
-    ports:
-      - 5000:5000
-    environment:
-      - PORT=5000
-    depends_on:
-      - mongodb_container
-  client-server: 
-    build: .
-    container_name: client_container
-    command: npm start /myapp/client
-    ports:
-      - 3000:3000
-    environment:
-      - PORT=3000
+version: '3.1'
 
-  mongodb_container:
-    image: mongo:latest
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
+services:
+
+  mongo:
+    image: mongo
+    restart: always
     ports:
-      - 27017:27017
+      - 27018:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
-      - mongodb_data_container:/data/db
+      - mongo_volume:/data/db
+    networks:
+      - mongo_network
+  
+
+      
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_SERVER: mongo
+    networks:
+      - mongo_network
+
+
+
+  backend:
+    image: samuelkadima/yolo-backend:v1.0.1
+    depends_on:
+      - mongo
+    ports:
+     - 5000:5000
+    environment:
+      - DB_HOST=mongo
+      - DB_USER=admin
+      - DB_PASSWORD=password
+    volumes:
+      - mongo_volume:/data/db
+    networks:
+      - mongo_network
+
+
+
+  client:
+    image: samuelkadima/yolo-client:v1.0.1
+    ports:
+     - 3000:3000
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend  
+    networks:
+      - mongo_network
+    volumes:
+      - mongo_volume:/data/db
 
 volumes:
-  mongodb_data_container:
+  mongo_volume:
+    driver: local
+
+networks:
+  mongo_network:
+    external: true
